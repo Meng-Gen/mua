@@ -229,7 +229,6 @@ public class Scanner {
 
   private void scanFloatingNumber() {
     buffer.append(c0());
-
     boolean hasExponent = false;
     while (true) {
       advance();
@@ -316,7 +315,6 @@ public class Scanner {
 
   private void scanString() {
     buffer.append(c0());
-
     boolean isEnclosed = false;
     while (!isEnclosed) {
       advance();
