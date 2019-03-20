@@ -1,7 +1,7 @@
 package com.menggen.mua;
 
 public enum TokenType {
-  UNKNOWN("UNKNOWN"),
+  INVALID("INVALID"),
   RESERVED("RESERVED"),
   DECIMAL_NUMBER("NUMBER"),
   DECIMAL_HEX_NUMBER("NUMBER"),

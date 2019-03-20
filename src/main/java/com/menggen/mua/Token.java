@@ -4,6 +4,11 @@ public class Token {
   private TokenType type;
   private String value;
 
+  public static final Token INVALID_TOKEN = new Token(TokenType.INVALID);
+  public static final Token EOL_TOKEN = new Token(TokenType.EOL);
+  public static final Token RETURN_TOKEN = new Token(TokenType.RESERVED, "return");
+  public static final Token BREAK_TOKEN = new Token(TokenType.RESERVED, "break");
+
   public Token(TokenType type) {
     this(type, "");
   }
@@ -19,6 +24,10 @@ public class Token {
 
   public String getValue() {
     return value;
+  }
+
+  public boolean equals(Token other) {
+    return type == other.type && value == other.value;
   }
 
   public String toString() {
