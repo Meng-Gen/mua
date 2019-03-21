@@ -6,8 +6,10 @@ public class Token {
 
   public static final Token INVALID_TOKEN = new Token(TokenType.INVALID);
   public static final Token EOL_TOKEN = new Token(TokenType.EOL);
+  public static final Token NIL_TOKEN = new Token(TokenType.RESERVED, "nil");
   public static final Token RETURN_TOKEN = new Token(TokenType.RESERVED, "return");
   public static final Token BREAK_TOKEN = new Token(TokenType.RESERVED, "break");
+  public static final Token SEMICOLON_TOKEN = new Token(TokenType.SYMBOL, ";");
 
   public Token(TokenType type) {
     this(type, "");
@@ -27,7 +29,7 @@ public class Token {
   }
 
   public boolean equals(Token other) {
-    return type == other.type && value == other.value;
+    return type.equals(other.type) && value.equals(other.value);
   }
 
   public String toString() {
