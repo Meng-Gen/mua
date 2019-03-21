@@ -4,13 +4,6 @@ public class Token {
   private TokenType type;
   private String value;
 
-  public static final Token INVALID_TOKEN = new Token(TokenType.INVALID);
-  public static final Token EOL_TOKEN = new Token(TokenType.EOL);
-  public static final Token NIL_TOKEN = new Token(TokenType.RESERVED, "nil");
-  public static final Token RETURN_TOKEN = new Token(TokenType.RESERVED, "return");
-  public static final Token BREAK_TOKEN = new Token(TokenType.RESERVED, "break");
-  public static final Token SEMICOLON_TOKEN = new Token(TokenType.SYMBOL, ";");
-
   public Token(TokenType type) {
     this(type, "");
   }

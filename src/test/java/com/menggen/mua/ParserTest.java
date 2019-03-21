@@ -4,7 +4,7 @@ import junit.framework.TestCase;
 
 public class ParserTest extends TestCase {
   public void testParseProgram() {
-    String program = "return 3 + 5";
+    String program = "return true + 5";
     Source source = new Source(program);
     Scanner scanner = new Scanner(source);
     Parser parser = new Parser(scanner);
