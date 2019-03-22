@@ -1,5 +1,18 @@
 package com.menggen.mua;
 
+import com.menggen.mua.ast.BooleanType;
+import com.menggen.mua.ast.BreakStatement;
+import com.menggen.mua.ast.DecimalNumberType;
+import com.menggen.mua.ast.Expression;
+import com.menggen.mua.ast.FloatingNumberType;
+import com.menggen.mua.ast.LocalStatement;
+import com.menggen.mua.ast.Name;
+import com.menggen.mua.ast.NilType;
+import com.menggen.mua.ast.ReturnStatement;
+import com.menggen.mua.ast.Statement;
+import com.menggen.mua.ast.StringType;
+import com.menggen.mua.ast.TableType;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,11 +45,24 @@ public class Parser {
   public static final Token TK_WHILE = new Token(TokenType.RESERVED, "while");
   // TokenType.SYMBOL
   public static final Token TK_ADD = new Token(TokenType.SYMBOL, "+");
-  public static final Token TK_LEFT_BRACE = new Token(TokenType.SYMBOL, "{");
-  public static final Token TK_MINUS = new Token(TokenType.SYMBOL, "-");
-  public static final Token TK_RIGHT_BRACE = new Token(TokenType.SYMBOL, "}");
+  public static final Token TK_ASSIGN = new Token(TokenType.SYMBOL, "=");
+  public static final Token TK_CONCAT = new Token(TokenType.SYMBOL, "..");
+  public static final Token TK_EQUAL = new Token(TokenType.SYMBOL, "==");
+  public static final Token TK_EXP = new Token(TokenType.SYMBOL, "^");
+  public static final Token TK_FLOAT_DIV = new Token(TokenType.SYMBOL, "/");
+  public static final Token TK_GREATER = new Token(TokenType.SYMBOL, ">");
+  public static final Token TK_GREATEREQUAL = new Token(TokenType.SYMBOL, ">=");
+  public static final Token TK_INEQUAL = new Token(TokenType.SYMBOL, "~=");
+  public static final Token TK_LEFTBRACE = new Token(TokenType.SYMBOL, "{");
+  public static final Token TK_LENGTH = new Token(TokenType.SYMBOL, "#");
+  public static final Token TK_LESS = new Token(TokenType.SYMBOL, "<");
+  public static final Token TK_LESSEQUAL = new Token(TokenType.SYMBOL, "<=");
+  public static final Token TK_MOD = new Token(TokenType.SYMBOL, "%");
+  public static final Token TK_MUL = new Token(TokenType.SYMBOL, "*");
+  public static final Token TK_RIGHTBRACE = new Token(TokenType.SYMBOL, "}");
   public static final Token TK_SEMICOLON = new Token(TokenType.SYMBOL, ";");
-  public static final Token TK_SHARP = new Token(TokenType.SYMBOL, "#");
+  public static final Token TK_SUB = new Token(TokenType.SYMBOL, "-");
+  public static final Token TK_UNARYMINUS = new Token(TokenType.SYMBOL, "-");
   // TokenType.EOL
   public static final Token TK_EOL = new Token(TokenType.EOL);
 
@@ -63,14 +89,13 @@ public class Parser {
 
   // block ::= {stat} [retstat]
   private void parseBlock() {
-    System.out.println("parseBlock()");
-    while (!isBlockFollow()) {
+    while (!isBlockFollow(currToken)) {
       if (currToken.equals(TK_RETURN)) {
-        //block.push(parseStatement());
         parseReturnStatement();
         break;
       }
-      break;
+      parseStatement();
+      consume(TK_SEMICOLON);
     }
   }
 
@@ -86,40 +111,167 @@ public class Parser {
   //     for Name in exp do block end |
   //     function funcname funcbody |
   //     local Name [‘=’ exp]
-  private void parseStatement() {
+  private Statement parseStatement() {
     System.out.println("parseStatement()");
+
+    if (currToken.equals(TK_LOCAL)) {
+      return parseLocalStatement();
+    } else if (currToken.equals(TK_IF)) {
+      return parseIfStatement();
+    } else if (currToken.equals(TK_FUNCTION)) {
+
+    } else if (currToken.equals(TK_WHILE)) {
+      return parseWhileStatement();
+    } else if (currToken.equals(TK_FOR)) {
+      return parseForStatement();
+    } else if (currToken.equals(TK_REPEAT)) {
+      return parseRepeatStatement();
+    } else if (currToken.equals(TK_BREAK)) {
+      return parseBreakStatement();
+    } else if (currToken.equals(TK_DO)) {
+      return parseDoStatement();
+    }
+/*
+    if (Keyword === token.type) {
+      switch (token.value) {
+        case 'local':    next(); return parseLocalStatement();
+        case 'if':       next(); return parseIfStatement();
+        case 'function': next();
+          var name = parseFunctionName();
+          return parseFunctionDeclaration(name);
+        case 'while':    next(); return parseWhileStatement();
+        case 'for':      next(); return parseForStatement();
+        case 'repeat':   next(); return parseRepeatStatement();
+        case 'break':    next(); return parseBreakStatement();
+        case 'do':       next(); return parseDoStatement();
+      }
+    }
+
+
+    if (Punctuator === token.type) {
+      if (consume('::')) return parseLabelStatement();
+    }
+    // Assignments memorizes the location and pushes it manually for wrapper
+    // nodes. Additionally empty `;` statements should not mark a location.
+    if (trackLocations) locations.pop();
+
+    // When a `;` is encounted, simply eat it without storing it.
+    if (features.emptyStatement) {
+      if (consume(';')) return;
+    }
+
+    return parseAssignmentOrCallStatement();
+
+*/
+    return null;
+  }
+
+  // local ::= local Name [‘=’ exp]
+  private Statement parseLocalStatement() {
+    System.out.println("parseLocalStatement()");
+
+    expect(TK_LOCAL);
+    Name name = parseName();
+    if (consume(TK_ASSIGN)) {
+      Expression expression = parseExpression();
+      return new LocalStatement(name, expression);
+    } else {
+      return new LocalStatement(name);
+    }
+  }
+
+  // if ::= if exp then block {elseif exp then block} [else block] end
+  private Statement parseIfStatement() {
+    System.out.println("parseIfStatement()");
+    expect(TK_IF);
+    return null;
+  }
+
+  // while ::= while exp do block end
+  private Statement parseWhileStatement() {
+    System.out.println("parseWhileStatement()");
+    expect(TK_WHILE);
+    return null;
+  }
+
+  // for ::= for Name ‘=’ exp ‘,’ exp [‘,’ exp] do block end |
+  //     for Name in exp do block end |
+  private Statement parseForStatement() {
+    System.out.println("parseForStatement()");
+    expect(TK_FOR);
+    return null;
+  }
+
+  // repeat ::= repeat block until exp
+  private Statement parseRepeatStatement() {
+    System.out.println("parseRepeatStatement()");
+    expect(TK_REPEAT);
+    return null;
+  }
+
+  // break ::= break
+  private Statement parseBreakStatement() {
+    System.out.println("parseBreakStatement()");
+    expect(TK_BREAK);
+    return new BreakStatement();
+  }
+
+  // do ::= do block end
+  private Statement parseDoStatement() {
+    System.out.println("parseDoStatement()");
+    expect(TK_DO);
+    return null;
   }
 
   // retstat ::= return [exp] [‘;’]
-  private void parseReturnStatement() {
+  private Statement parseReturnStatement() {
     System.out.println("parseReturnStatement()");
 
     expect(TK_RETURN);
-    parseExpression();
+    Expression expression = parseExpression();
     consume(TK_SEMICOLON);
+    return new ReturnStatement(expression);
   }
 
   // exp ::= Number | String | nil | false | true | ‘{’ ‘}’ | prefixexp |
   //     exp binop exp | unop exp
-  private void parseExpression() {
+  private Expression parseExpression() {
     System.out.println("parseExpression()");
-    parseSubExpression(0);
+
+    Expression expression = parseSubExpression(0);
+    return expression;
   }
 
+  // TODO: Incompleted
   // exp ::= (unop exp | primary | prefixexp ) { binop exp }
-  private void parseSubExpression(int minPrecedence) {
+  private Expression parseSubExpression(int minPrecedence) {
     System.out.println("parseSubExpression()");
+
+    Expression expression = null;
     if (isUnaryToken(currToken)) {
       System.out.println("isUnaryToken() is true");
       next();
-      parseSubExpression(10);
+      expression = parseSubExpression(10);
     }
-    parsePrimaryExpression();
+
+    if (expression == null) {
+      System.out.println("expression == null");
+      expression = parsePrimaryExpression();
+
+      if (expression == null) {
+        System.out.println("expression == null again!!!");
+        expression = parsePrefixExpression();
+      }
+    }
+
+    if (expression == null) {
+      return null;
+    }
 
     while (true) {
       int precedence = getBinaryPrecedence(currToken);
-      System.out.println(currToken);
-      System.out.println("getBinaryPrecedence() = " + precedence);
+      //System.out.println(currToken);
+      //System.out.println("getBinaryPrecedence() = " + precedence);
 
       if (precedence == 0 || precedence <= minPrecedence) {
         break;
@@ -134,100 +286,96 @@ public class Parser {
       //if (null == right) raiseUnexpectedToken('<expression>', token);
       //expression = finishNode(ast.binaryExpression(operator, expression, right));
     }
+
+    return expression;
   }
 
   // primary ::= Number | String | nil | false | true | ‘{’ ‘}’
-  private void parsePrimaryExpression() {
+  private Expression parsePrimaryExpression() {
     System.out.println("parsePrimaryExpression()");
-    if (currToken.getType().equals(TokenType.DECIMAL_NUMBER)) {
-      System.out.println("TokenType.DECIMAL_NUMBER");
-      System.out.println(currToken);
+
+
+    TokenType type = currToken.getType();
+    String value = currToken.getValue();
+
+    if (type.equals(TokenType.DECIMAL_NUMBER)) {
+      //System.out.println("TokenType.DECIMAL_NUMBER");
+
       next();
-      System.out.println("TODO: return ast DECIMAL_NUMBER node");
-      // return AST DECIMAL_NUMBER node
+      return new DecimalNumberType(value, 10);
+    } else if (type.equals(TokenType.DECIMAL_HEX_NUMBER)) {
       next();
-    } else if (currToken.getType().equals(TokenType.STRING)) {
-      System.out.println("TokenType.STRING");
-      System.out.println(currToken);
+      return new DecimalNumberType(value.substring(2), 16);
+    } else if (type.equals(TokenType.STRING)) {
       next();
-      System.out.println("TODO: return ast STRING node");
-      // return AST STRING node
-      next();
+      return new StringType(value);
     } else if (currToken.equals(TK_NIL)) {
-      System.out.println("TK_NIL");
-      System.out.println(currToken);
       next();
-      System.out.println("TODO: return ast NIL node");
-      // return AST NIL node
-      next();
+      return new NilType();
     } else if (currToken.equals(TK_FALSE)) {
-      System.out.println("TK_FALSE");
-      System.out.println(currToken);
       next();
-      System.out.println("TODO: return ast FALSE node");
-      // return AST FALSE node
+      return new BooleanType(false);
     } else if (currToken.equals(TK_TRUE)) {
-      System.out.println("TK_TRUE");
-      System.out.println(currToken);
       next();
-      System.out.println("TODO: return ast TRUE node");
-      // return AST TRUE node
-    } else if (consume(TK_LEFT_BRACE)) {
-      System.out.println("TK_LEFT_BRACE");
-      expect(TK_RIGHT_BRACE);
-      System.out.println("TODO: return ast {} node");
-      // return AST {} node
+      return new BooleanType(true);
+    } else if (consume(TK_LEFTBRACE)) {
+      expect(TK_RIGHTBRACE);
+      return new TableType();
     }
-    /*
-    var literals = StringLiteral | NumericLiteral | BooleanLiteral | NilLiteral | VarargLiteral
-      , value = token.value
-      , type = token.type
-      , marker;
-
-    if (trackLocations) marker = createLocationMarker();
-
-    if (type & literals) {
-      pushLocation(marker);
-      var raw = input.slice(token.range[0], token.range[1]);
-      next();
-      return finishNode(ast.literal(type, value, raw));
-    } else if (Keyword === type && 'function' === value) {
-      pushLocation(marker);
-      next();
-      if (options.scope) createScope();
-      return parseFunctionDeclaration(null);
-    } else if (consume('{')) {
-      pushLocation(marker);
-      return parseTableConstructor();
-    }
-    */
+    return null;
   }
 
-  private boolean isBlockFollow() {
-    return false;
-    /*
-        if (EOF === token.type) return true;
-    if (Keyword !== token.type) return false;
-    switch (token.value) {
-      case 'else': case 'elseif':
-      case 'end': case 'until':
-        return true;
-      default:
-        return false;
+  // TODO: Incompleted
+  // prefixexp ::= var | functioncall | ‘(’ exp ‘)’
+  private Expression parsePrefixExpression() {
+    return null;
+  }
+
+  private Name parseName() {
+    TokenType type = currToken.getType();
+    String value = currToken.getValue();
+    if (type.equals(TokenType.NAME)) {
+      next();
+      return new Name(value);
+    } else {
+      // TODO: throw an exception
     }
-    */
+    return null;
+  }
+
+  private boolean isBlockFollow(Token token) {
+    return token.equals(TK_INVALID) || token.equals(TK_ELSE) ||
+        token.equals(TK_ELSEIF) || token.equals(TK_END) ||
+        token.equals(TK_UNTIL);
   }
 
   // unop ::= ‘-’ | not | ‘#’
   private boolean isUnaryToken(Token token) {
-    return token.equals(TK_MINUS) || token.equals(TK_NOT) || token.equals(TK_SHARP);
+    return token.equals(TK_UNARYMINUS) || token.equals(TK_NOT) ||
+        token.equals(TK_LENGTH);
   }
 
   private int getBinaryPrecedence(Token token) {
-    if (token.equals(TK_ADD) || token.equals(TK_MINUS)) {
+    if (token.equals(TK_OR)) {
+      return 1;
+    } else if (token.equals(TK_AND)) {
+      return 2;
+    } else if (token.equals(TK_EQUAL) || token.equals(TK_INEQUAL) ||
+        token.equals(TK_LESS) || token.equals(TK_GREATER) ||
+        token.equals(TK_LESSEQUAL) || token.equals(TK_GREATEREQUAL)) {
+      return 3;
+    } else if (token.equals(TK_CONCAT)) {
+      return 8;
+    } else if (token.equals(TK_ADD) || token.equals(TK_SUB)) {
       return 9;
+    } else if (token.equals(TK_MUL) || token.equals(TK_FLOAT_DIV) ||
+        token.equals(TK_MOD)) {
+      return 10;
+    } else if (token.equals(TK_EXP)) {
+      return 12;
+    } else {
+      return 0;
     }
-    return 0;
   }
 
   private void next() {
@@ -247,6 +395,7 @@ public class Parser {
     return false;
   }
 
+  // TODO: Incompleted
   private void expect(Token token) {
     if (currToken.equals(token)) {
       next();
