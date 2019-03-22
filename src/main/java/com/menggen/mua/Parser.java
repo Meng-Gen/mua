@@ -1,17 +1,30 @@
 package com.menggen.mua;
 
+import com.menggen.mua.ast.AssignmentStatement;
+import com.menggen.mua.ast.Block;
 import com.menggen.mua.ast.BooleanType;
 import com.menggen.mua.ast.BreakStatement;
+import com.menggen.mua.ast.Chunk;
+import com.menggen.mua.ast.Clause;
 import com.menggen.mua.ast.DecimalNumberType;
+import com.menggen.mua.ast.DoStatement;
+import com.menggen.mua.ast.ElseClause;
+import com.menggen.mua.ast.ElseifClause;
 import com.menggen.mua.ast.Expression;
 import com.menggen.mua.ast.FloatingNumberType;
+import com.menggen.mua.ast.ForGenericStatement;
+import com.menggen.mua.ast.ForNumericStatement;
+import com.menggen.mua.ast.IfClause;
+import com.menggen.mua.ast.IfStatement;
 import com.menggen.mua.ast.LocalStatement;
 import com.menggen.mua.ast.Name;
 import com.menggen.mua.ast.NilType;
+import com.menggen.mua.ast.RepeatStatement;
 import com.menggen.mua.ast.ReturnStatement;
 import com.menggen.mua.ast.Statement;
 import com.menggen.mua.ast.StringType;
 import com.menggen.mua.ast.TableType;
+import com.menggen.mua.ast.WhileStatement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +59,7 @@ public class Parser {
   // TokenType.SYMBOL
   public static final Token TK_ADD = new Token(TokenType.SYMBOL, "+");
   public static final Token TK_ASSIGN = new Token(TokenType.SYMBOL, "=");
+  public static final Token TK_COMMA = new Token(TokenType.SYMBOL, ",");
   public static final Token TK_CONCAT = new Token(TokenType.SYMBOL, "..");
   public static final Token TK_EQUAL = new Token(TokenType.SYMBOL, "==");
   public static final Token TK_EXP = new Token(TokenType.SYMBOL, "^");
@@ -54,12 +68,14 @@ public class Parser {
   public static final Token TK_GREATEREQUAL = new Token(TokenType.SYMBOL, ">=");
   public static final Token TK_INEQUAL = new Token(TokenType.SYMBOL, "~=");
   public static final Token TK_LEFTBRACE = new Token(TokenType.SYMBOL, "{");
+  public static final Token TK_LEFTPAREN = new Token(TokenType.SYMBOL, "(");
   public static final Token TK_LENGTH = new Token(TokenType.SYMBOL, "#");
   public static final Token TK_LESS = new Token(TokenType.SYMBOL, "<");
   public static final Token TK_LESSEQUAL = new Token(TokenType.SYMBOL, "<=");
   public static final Token TK_MOD = new Token(TokenType.SYMBOL, "%");
   public static final Token TK_MUL = new Token(TokenType.SYMBOL, "*");
   public static final Token TK_RIGHTBRACE = new Token(TokenType.SYMBOL, "}");
+  public static final Token TK_RIGHTPAREN = new Token(TokenType.SYMBOL, ")");
   public static final Token TK_SEMICOLON = new Token(TokenType.SYMBOL, ";");
   public static final Token TK_SUB = new Token(TokenType.SYMBOL, "-");
   public static final Token TK_UNARYMINUS = new Token(TokenType.SYMBOL, "-");
@@ -77,26 +93,32 @@ public class Parser {
     this.currToken = TK_INVALID;
   }
 
-  public void parse() {
-    parseChunk();
+  public Chunk parse() {
+    return parseChunk();
   }
 
   // chunk ::= block
-  private void parseChunk() {
+  private Chunk parseChunk() {
     next();
-    parseBlock();
+    Block body = parseBlock();
+    return new Chunk(body);
   }
 
   // block ::= {stat} [retstat]
-  private void parseBlock() {
+  private Block parseBlock() {
+    List<Statement> block = new ArrayList<Statement>();
     while (!isBlockFollow(currToken)) {
       if (currToken.equals(TK_RETURN)) {
-        parseReturnStatement();
+        block.add(parseReturnStatement());
         break;
       }
-      parseStatement();
+      Statement statement = parseStatement();
       consume(TK_SEMICOLON);
+      if (statement != null) {
+        block.add(statement);
+      }
     }
+    return new Block(block);
   }
 
   // stat ::= ‘;’ |
@@ -119,7 +141,11 @@ public class Parser {
     } else if (currToken.equals(TK_IF)) {
       return parseIfStatement();
     } else if (currToken.equals(TK_FUNCTION)) {
-
+      /*
+          var name = parseFunctionName();
+          return parseFunctionDeclaration(name);
+      */
+      return null;
     } else if (currToken.equals(TK_WHILE)) {
       return parseWhileStatement();
     } else if (currToken.equals(TK_FOR)) {
@@ -130,40 +156,11 @@ public class Parser {
       return parseBreakStatement();
     } else if (currToken.equals(TK_DO)) {
       return parseDoStatement();
+    } else if (consume(TK_SEMICOLON)) {
+      return null;
+    } else {
+      return parseAssignmentOrCallStatement();
     }
-/*
-    if (Keyword === token.type) {
-      switch (token.value) {
-        case 'local':    next(); return parseLocalStatement();
-        case 'if':       next(); return parseIfStatement();
-        case 'function': next();
-          var name = parseFunctionName();
-          return parseFunctionDeclaration(name);
-        case 'while':    next(); return parseWhileStatement();
-        case 'for':      next(); return parseForStatement();
-        case 'repeat':   next(); return parseRepeatStatement();
-        case 'break':    next(); return parseBreakStatement();
-        case 'do':       next(); return parseDoStatement();
-      }
-    }
-
-
-    if (Punctuator === token.type) {
-      if (consume('::')) return parseLabelStatement();
-    }
-    // Assignments memorizes the location and pushes it manually for wrapper
-    // nodes. Additionally empty `;` statements should not mark a location.
-    if (trackLocations) locations.pop();
-
-    // When a `;` is encounted, simply eat it without storing it.
-    if (features.emptyStatement) {
-      if (consume(';')) return;
-    }
-
-    return parseAssignmentOrCallStatement();
-
-*/
-    return null;
   }
 
   // local ::= local Name [‘=’ exp]
@@ -173,7 +170,7 @@ public class Parser {
     expect(TK_LOCAL);
     Name name = parseName();
     if (consume(TK_ASSIGN)) {
-      Expression expression = parseExpression();
+      Expression expression = expect(parseExpression());
       return new LocalStatement(name, expression);
     } else {
       return new LocalStatement(name);
@@ -183,35 +180,92 @@ public class Parser {
   // if ::= if exp then block {elseif exp then block} [else block] end
   private Statement parseIfStatement() {
     System.out.println("parseIfStatement()");
-    expect(TK_IF);
-    return null;
+
+    List<Clause> clauses = new ArrayList<Clause>();
+    {
+      System.out.println("IfClause()");
+
+      expect(TK_IF);
+      Expression condition = expect(parseExpression());
+      expect(TK_THEN);
+      Block body = parseBlock();
+      clauses.add(new IfClause(condition, body));
+    }
+    while (consume(TK_ELSEIF)) {
+      System.out.println("ElseifClause()");
+
+      Expression condition = expect(parseExpression());
+      expect(TK_THEN);
+      Block body = parseBlock();
+      clauses.add(new ElseifClause(condition, body));
+    }
+    if (consume(TK_ELSE)) {
+      System.out.println("ElseClause()");
+
+      Block body = parseBlock();
+      clauses.add(new ElseClause(body));
+    }
+    expect(TK_END);
+    return new IfStatement(clauses);
   }
 
   // while ::= while exp do block end
   private Statement parseWhileStatement() {
     System.out.println("parseWhileStatement()");
+
     expect(TK_WHILE);
-    return null;
+    Expression condition = expect(parseExpression());
+    expect(TK_DO);
+    Block body = parseBlock();
+    expect(TK_END);
+    return new WhileStatement(condition, body);
   }
 
   // for ::= for Name ‘=’ exp ‘,’ exp [‘,’ exp] do block end |
-  //     for Name in exp do block end |
+  //     for Name in exp do block end
   private Statement parseForStatement() {
     System.out.println("parseForStatement()");
+
     expect(TK_FOR);
-    return null;
+    Name variable = parseName();
+    if (consume(TK_ASSIGN)) {
+      System.out.println("ForNumericStatement");
+
+      Expression start = expect(parseExpression());
+      expect(TK_COMMA);
+      Expression end = expect(parseExpression());
+      Expression step = consume(TK_COMMA) ? expect(parseExpression()) : null;
+      expect(TK_DO);
+      Block body = parseBlock();
+      expect(TK_END);
+      return new ForNumericStatement(variable, start, end, step, body);
+    } else {
+      System.out.println("ForGenericStatement");
+
+      expect(TK_IN);
+      Expression iterator = expect(parseExpression());
+      expect(TK_DO);
+      Block body = parseBlock();
+      expect(TK_END);
+      return new ForGenericStatement(variable, iterator, body);
+    }
   }
 
   // repeat ::= repeat block until exp
   private Statement parseRepeatStatement() {
     System.out.println("parseRepeatStatement()");
+
     expect(TK_REPEAT);
-    return null;
+    Block body = parseBlock();
+    expect(TK_UNTIL);
+    Expression condition = expect(parseExpression());
+    return new RepeatStatement(body, condition);
   }
 
   // break ::= break
   private Statement parseBreakStatement() {
     System.out.println("parseBreakStatement()");
+
     expect(TK_BREAK);
     return new BreakStatement();
   }
@@ -219,8 +273,36 @@ public class Parser {
   // do ::= do block end
   private Statement parseDoStatement() {
     System.out.println("parseDoStatement()");
+
     expect(TK_DO);
-    return null;
+    Block body = parseBlock();
+    expect(TK_END);
+    return new DoStatement(body);
+  }
+
+  // assignment ::= var '=' exp
+  // var ::= Name | prefixexp '[' exp ']' | prefixexp '.' Name
+  //
+  // call ::= callexp
+  // callexp ::= prefixexp args | prefixexp ':' Name args
+  private Statement parseAssignmentOrCallStatement() {
+    System.out.println("parseAssignmentOrCallStatement()");
+
+    Expression expression = parsePrefixExpression();
+    System.out.println(expression);
+
+    if (consume(TK_ASSIGN)) {
+      System.out.println("consume(TK_ASSIGN)");
+
+      Expression variable = expression;
+      Expression init = expect(parseExpression());
+
+      System.out.println("return new AssignmentStatement()");
+      return new AssignmentStatement(variable, init);
+    }
+
+    throw new RuntimeException();
+    //return null;
   }
 
   // retstat ::= return [exp] [‘;’]
@@ -294,13 +376,9 @@ public class Parser {
   private Expression parsePrimaryExpression() {
     System.out.println("parsePrimaryExpression()");
 
-
     TokenType type = currToken.getType();
     String value = currToken.getValue();
-
     if (type.equals(TokenType.DECIMAL_NUMBER)) {
-      //System.out.println("TokenType.DECIMAL_NUMBER");
-
       next();
       return new DecimalNumberType(value, 10);
     } else if (type.equals(TokenType.DECIMAL_HEX_NUMBER)) {
@@ -327,11 +405,78 @@ public class Parser {
 
   // TODO: Incompleted
   // prefixexp ::= var | functioncall | ‘(’ exp ‘)’
+  //
+  // prefixexp ::= prefix {suffix}
+  // prefix ::= Name | '(' exp ')'
+  // suffix ::= '[' exp ']' | '.' Name | ':' Name args | args
+  // args ::= '(' [explist] ')' | '{' '}' | String
   private Expression parsePrefixExpression() {
-    return null;
+    System.out.println("parsePrefixExpression()");
+
+    Expression base = null;
+    if (currToken.getType().equals(TokenType.NAME)) {
+      System.out.println("currToken.getType().equals(TokenType.NAME)");
+
+      base = parseName();
+    } else if (consume(TK_LEFTPAREN)) {
+      base = expect(parseExpression());
+      expect(TK_RIGHTPAREN);
+    } else {
+      return null;
+    }
+
+    Expression expression = null;
+    Name name = null;
+    /*
+    while (true) {
+      if ()
+
+      if (Punctuator === token.type) {
+        switch (token.value) {
+          case '[':
+            pushLocation(marker);
+            next();
+            expression = parseExpectedExpression();
+            expect(']');
+            base = finishNode(ast.indexExpression(base, expression));
+            break;
+          case '.':
+            pushLocation(marker);
+            next();
+            identifier = parseIdentifier();
+            base = finishNode(ast.memberExpression(base, '.', identifier));
+            break;
+          case ':':
+            pushLocation(marker);
+            next();
+            identifier = parseIdentifier();
+            base = finishNode(ast.memberExpression(base, ':', identifier));
+            // Once a : is found, this has to be a CallExpression, otherwise
+            // throw an error.
+            pushLocation(marker);
+            base = parseCallExpression(base);
+            break;
+          case '(': case '{': // args
+            pushLocation(marker);
+            base = parseCallExpression(base);
+            break;
+          default:
+            return base;
+        }
+      } else if (StringLiteral === token.type) {
+        pushLocation(marker);
+        base = parseCallExpression(base);
+      } else {
+        break;
+      }
+    }
+    */
+    return base;
   }
 
   private Name parseName() {
+    System.out.println("parseName()");
+
     TokenType type = currToken.getType();
     String value = currToken.getValue();
     if (type.equals(TokenType.NAME)) {
@@ -339,8 +484,8 @@ public class Parser {
       return new Name(value);
     } else {
       // TODO: throw an exception
+      throw new RuntimeException();
     }
-    return null;
   }
 
   private boolean isBlockFollow(Token token) {
@@ -396,11 +541,22 @@ public class Parser {
   }
 
   // TODO: Incompleted
+  private Expression expect(Expression expression) {
+    if (expression != null) {
+      return expression;
+    } else {
+      // TODO: throw an exception
+      throw new RuntimeException();
+    }
+  }
+
+  // TODO: Incompleted
   private void expect(Token token) {
     if (currToken.equals(token)) {
       next();
     } else {
       // TODO: throw an exception
+      throw new RuntimeException();
     }
   }
 }
