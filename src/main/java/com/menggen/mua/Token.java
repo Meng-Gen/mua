@@ -28,7 +28,7 @@ public class Token {
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append("[").append(type).append("]");
-    if (type != TokenType.EOL) {
+    if (!value.equals("")) {
       builder.append(" ").append(value);
     }
     return builder.toString();

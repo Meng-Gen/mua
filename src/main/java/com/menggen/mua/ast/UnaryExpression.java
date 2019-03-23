@@ -2,10 +2,10 @@ package com.menggen.mua.ast;
 
 public class UnaryExpression extends Expression {
   private String operator;
-  private Expression expression;
+  private Expression argument;
 
-  public UnaryExpression(String operator, Expression expression) {
+  public UnaryExpression(String operator, Expression argument) {
     this.operator = operator;
-    this.expression = expression;
+    this.argument = argument;
   }
 }

@@ -1,6 +1,7 @@
 package com.menggen.mua;
 
 import com.menggen.mua.ast.AssignmentStatement;
+import com.menggen.mua.ast.BinaryExpression;
 import com.menggen.mua.ast.Block;
 import com.menggen.mua.ast.BooleanType;
 import com.menggen.mua.ast.BreakStatement;
@@ -14,9 +15,12 @@ import com.menggen.mua.ast.Expression;
 import com.menggen.mua.ast.FloatingNumberType;
 import com.menggen.mua.ast.ForGenericStatement;
 import com.menggen.mua.ast.ForNumericStatement;
+import com.menggen.mua.ast.FunctionDefinition;
 import com.menggen.mua.ast.IfClause;
 import com.menggen.mua.ast.IfStatement;
+import com.menggen.mua.ast.IndexExpression;
 import com.menggen.mua.ast.LocalStatement;
+import com.menggen.mua.ast.MemberExpression;
 import com.menggen.mua.ast.Name;
 import com.menggen.mua.ast.NilType;
 import com.menggen.mua.ast.RepeatStatement;
@@ -24,6 +28,7 @@ import com.menggen.mua.ast.ReturnStatement;
 import com.menggen.mua.ast.Statement;
 import com.menggen.mua.ast.StringType;
 import com.menggen.mua.ast.TableType;
+import com.menggen.mua.ast.UnaryExpression;
 import com.menggen.mua.ast.WhileStatement;
 
 import java.util.ArrayList;
@@ -33,54 +38,57 @@ import java.util.List;
 
 public class Parser {
   // TokenType.INVALID 
-  public static final Token TK_INVALID = new Token(TokenType.INVALID);
+  private static final Token TK_INVALID = new Token(TokenType.INVALID);
   // TokenType.RESERVED
-  public static final Token TK_AND = new Token(TokenType.RESERVED, "and");
-  public static final Token TK_BREAK = new Token(TokenType.RESERVED, "break");
-  public static final Token TK_DO = new Token(TokenType.RESERVED, "do");
-  public static final Token TK_ELSE = new Token(TokenType.RESERVED, "else");
-  public static final Token TK_ELSEIF = new Token(TokenType.RESERVED, "elseif");
-  public static final Token TK_END = new Token(TokenType.RESERVED, "end");
-  public static final Token TK_FALSE = new Token(TokenType.RESERVED, "false");
-  public static final Token TK_FOR = new Token(TokenType.RESERVED, "for");
-  public static final Token TK_FUNCTION = new Token(TokenType.RESERVED, "function");
-  public static final Token TK_IF = new Token(TokenType.RESERVED, "if");
-  public static final Token TK_IN = new Token(TokenType.RESERVED, "in");
-  public static final Token TK_LOCAL = new Token(TokenType.RESERVED, "local");
-  public static final Token TK_NIL = new Token(TokenType.RESERVED, "nil");
-  public static final Token TK_NOT = new Token(TokenType.RESERVED, "not");
-  public static final Token TK_OR = new Token(TokenType.RESERVED, "or");
-  public static final Token TK_REPEAT = new Token(TokenType.RESERVED, "repeat");
-  public static final Token TK_RETURN = new Token(TokenType.RESERVED, "return");
-  public static final Token TK_THEN = new Token(TokenType.RESERVED, "then");
-  public static final Token TK_TRUE = new Token(TokenType.RESERVED, "true");
-  public static final Token TK_UNTIL = new Token(TokenType.RESERVED, "until");
-  public static final Token TK_WHILE = new Token(TokenType.RESERVED, "while");
+  private static final Token TK_AND = new Token(TokenType.RESERVED, "and");
+  private static final Token TK_BREAK = new Token(TokenType.RESERVED, "break");
+  private static final Token TK_DO = new Token(TokenType.RESERVED, "do");
+  private static final Token TK_ELSE = new Token(TokenType.RESERVED, "else");
+  private static final Token TK_ELSEIF = new Token(TokenType.RESERVED, "elseif");
+  private static final Token TK_END = new Token(TokenType.RESERVED, "end");
+  private static final Token TK_FALSE = new Token(TokenType.RESERVED, "false");
+  private static final Token TK_FOR = new Token(TokenType.RESERVED, "for");
+  private static final Token TK_FUNCTION = new Token(TokenType.RESERVED, "function");
+  private static final Token TK_IF = new Token(TokenType.RESERVED, "if");
+  private static final Token TK_IN = new Token(TokenType.RESERVED, "in");
+  private static final Token TK_LOCAL = new Token(TokenType.RESERVED, "local");
+  private static final Token TK_NIL = new Token(TokenType.RESERVED, "nil");
+  private static final Token TK_NOT = new Token(TokenType.RESERVED, "not");
+  private static final Token TK_OR = new Token(TokenType.RESERVED, "or");
+  private static final Token TK_REPEAT = new Token(TokenType.RESERVED, "repeat");
+  private static final Token TK_RETURN = new Token(TokenType.RESERVED, "return");
+  private static final Token TK_THEN = new Token(TokenType.RESERVED, "then");
+  private static final Token TK_TRUE = new Token(TokenType.RESERVED, "true");
+  private static final Token TK_UNTIL = new Token(TokenType.RESERVED, "until");
+  private static final Token TK_WHILE = new Token(TokenType.RESERVED, "while");
   // TokenType.SYMBOL
-  public static final Token TK_ADD = new Token(TokenType.SYMBOL, "+");
-  public static final Token TK_ASSIGN = new Token(TokenType.SYMBOL, "=");
-  public static final Token TK_COMMA = new Token(TokenType.SYMBOL, ",");
-  public static final Token TK_CONCAT = new Token(TokenType.SYMBOL, "..");
-  public static final Token TK_EQUAL = new Token(TokenType.SYMBOL, "==");
-  public static final Token TK_EXP = new Token(TokenType.SYMBOL, "^");
-  public static final Token TK_FLOAT_DIV = new Token(TokenType.SYMBOL, "/");
-  public static final Token TK_GREATER = new Token(TokenType.SYMBOL, ">");
-  public static final Token TK_GREATEREQUAL = new Token(TokenType.SYMBOL, ">=");
-  public static final Token TK_INEQUAL = new Token(TokenType.SYMBOL, "~=");
-  public static final Token TK_LEFTBRACE = new Token(TokenType.SYMBOL, "{");
-  public static final Token TK_LEFTPAREN = new Token(TokenType.SYMBOL, "(");
-  public static final Token TK_LENGTH = new Token(TokenType.SYMBOL, "#");
-  public static final Token TK_LESS = new Token(TokenType.SYMBOL, "<");
-  public static final Token TK_LESSEQUAL = new Token(TokenType.SYMBOL, "<=");
-  public static final Token TK_MOD = new Token(TokenType.SYMBOL, "%");
-  public static final Token TK_MUL = new Token(TokenType.SYMBOL, "*");
-  public static final Token TK_RIGHTBRACE = new Token(TokenType.SYMBOL, "}");
-  public static final Token TK_RIGHTPAREN = new Token(TokenType.SYMBOL, ")");
-  public static final Token TK_SEMICOLON = new Token(TokenType.SYMBOL, ";");
-  public static final Token TK_SUB = new Token(TokenType.SYMBOL, "-");
-  public static final Token TK_UNARYMINUS = new Token(TokenType.SYMBOL, "-");
+  private static final Token TK_ADD = new Token(TokenType.SYMBOL, "+");
+  private static final Token TK_ASSIGN = new Token(TokenType.SYMBOL, "=");
+  private static final Token TK_COMMA = new Token(TokenType.SYMBOL, ",");
+  private static final Token TK_CONCAT = new Token(TokenType.SYMBOL, "..");
+  private static final Token TK_DOT = new Token(TokenType.SYMBOL, ".");
+  private static final Token TK_EQUAL = new Token(TokenType.SYMBOL, "==");
+  private static final Token TK_EXP = new Token(TokenType.SYMBOL, "^");
+  private static final Token TK_FLOAT_DIV = new Token(TokenType.SYMBOL, "/");
+  private static final Token TK_GREATER = new Token(TokenType.SYMBOL, ">");
+  private static final Token TK_GREATEREQUAL = new Token(TokenType.SYMBOL, ">=");
+  private static final Token TK_INEQUAL = new Token(TokenType.SYMBOL, "~=");
+  private static final Token TK_LEFTBRACE = new Token(TokenType.SYMBOL, "{");
+  private static final Token TK_LEFTBRACKET = new Token(TokenType.SYMBOL, "[");
+  private static final Token TK_LEFTPAREN = new Token(TokenType.SYMBOL, "(");
+  private static final Token TK_LENGTH = new Token(TokenType.SYMBOL, "#");
+  private static final Token TK_LESS = new Token(TokenType.SYMBOL, "<");
+  private static final Token TK_LESSEQUAL = new Token(TokenType.SYMBOL, "<=");
+  private static final Token TK_MOD = new Token(TokenType.SYMBOL, "%");
+  private static final Token TK_MUL = new Token(TokenType.SYMBOL, "*");
+  private static final Token TK_RIGHTBRACE = new Token(TokenType.SYMBOL, "}");
+  private static final Token TK_RIGHTBRACKET = new Token(TokenType.SYMBOL, "]");
+  private static final Token TK_RIGHTPAREN = new Token(TokenType.SYMBOL, ")");
+  private static final Token TK_SEMICOLON = new Token(TokenType.SYMBOL, ";");
+  private static final Token TK_SUB = new Token(TokenType.SYMBOL, "-");
+  private static final Token TK_UNARYMINUS = new Token(TokenType.SYMBOL, "-");
   // TokenType.EOL
-  public static final Token TK_EOL = new Token(TokenType.EOL);
+  private static final Token TK_EOL = new Token(TokenType.EOL);
 
   private List<Token> tokens;
   private int pos;
@@ -141,11 +149,7 @@ public class Parser {
     } else if (currToken.equals(TK_IF)) {
       return parseIfStatement();
     } else if (currToken.equals(TK_FUNCTION)) {
-      /*
-          var name = parseFunctionName();
-          return parseFunctionDeclaration(name);
-      */
-      return null;
+      return parseFunctionDefinition();
     } else if (currToken.equals(TK_WHILE)) {
       return parseWhileStatement();
     } else if (currToken.equals(TK_FOR)) {
@@ -207,6 +211,33 @@ public class Parser {
     }
     expect(TK_END);
     return new IfStatement(clauses);
+  }
+
+  private FunctionDefinition parseFunctionDefinition() {
+    System.out.println("parseFunctionDefinition()");
+
+    expect(TK_FUNCTION);
+    Expression name = parseFunctionName();
+    expect(TK_LEFTPAREN);
+    List<Name> parameters = new ArrayList<Name>();
+    if (!consume(TK_RIGHTPAREN)) {
+      while (true) {
+        if (currToken.getType().equals(TokenType.NAME)) {
+          Name parameter = parseName();
+          parameters.add(parameter);
+          if (consume(TK_COMMA)) {
+            continue;
+          } else if (consume(TK_RIGHTPAREN)) {
+            break;
+          }
+        } else {
+          throw new RuntimeException();
+        }
+      }
+    }
+    Block body = parseBlock();
+    expect(TK_END);
+    return new FunctionDefinition(name, parameters, body);
   }
 
   // while ::= while exp do block end
@@ -280,6 +311,7 @@ public class Parser {
     return new DoStatement(body);
   }
 
+  // TODO: Incompleted
   // assignment ::= var '=' exp
   // var ::= Name | prefixexp '[' exp ']' | prefixexp '.' Name
   //
@@ -324,7 +356,6 @@ public class Parser {
     return expression;
   }
 
-  // TODO: Incompleted
   // exp ::= (unop exp | primary | prefixexp ) { binop exp }
   private Expression parseSubExpression(int minPrecedence) {
     System.out.println("parseSubExpression()");
@@ -332,16 +363,19 @@ public class Parser {
     Expression expression = null;
     if (isUnaryToken(currToken)) {
       System.out.println("isUnaryToken() is true");
+
+      String operator = currToken.getValue();
       next();
-      expression = parseSubExpression(10);
+      Expression argument = expect(parseSubExpression(10));
+      expression = new UnaryExpression(operator, argument);
     }
 
     if (expression == null) {
-      System.out.println("expression == null");
+      System.out.println("Should parsePrimaryExpression()");
       expression = parsePrimaryExpression();
 
       if (expression == null) {
-        System.out.println("expression == null again!!!");
+        System.out.println("Should parsePrefixExpression()");
         expression = parsePrefixExpression();
       }
     }
@@ -351,22 +385,22 @@ public class Parser {
     }
 
     while (true) {
+      String operator = currToken.getValue();
+
       int precedence = getBinaryPrecedence(currToken);
-      //System.out.println(currToken);
-      //System.out.println("getBinaryPrecedence() = " + precedence);
+      System.out.println("getBinaryPrecedence(" + currToken + ")=" + precedence);
 
       if (precedence == 0 || precedence <= minPrecedence) {
         break;
       }
-      // Right-hand precedence operators
-      String operator = currToken.getValue();
       if (operator.equals("^") || operator.equals("..")) {
         precedence--;
       }
       next();
-      parseSubExpression(precedence);
-      //if (null == right) raiseUnexpectedToken('<expression>', token);
-      //expression = finishNode(ast.binaryExpression(operator, expression, right));
+      Expression right = expect(parseSubExpression(precedence));
+
+      System.out.println("new BinaryExpression(" + operator + ")");
+      expression = new BinaryExpression(operator, expression, right);
     }
 
     return expression;
@@ -374,7 +408,7 @@ public class Parser {
 
   // primary ::= Number | String | nil | false | true | ‘{’ ‘}’
   private Expression parsePrimaryExpression() {
-    System.out.println("parsePrimaryExpression()");
+    System.out.println("parsePrimaryExpression() currToken=" + currToken);
 
     TokenType type = currToken.getType();
     String value = currToken.getValue();
@@ -398,6 +432,8 @@ public class Parser {
       return new BooleanType(true);
     } else if (consume(TK_LEFTBRACE)) {
       expect(TK_RIGHTBRACE);
+
+      System.out.println("return new TableType()");
       return new TableType();
     }
     return null;
@@ -408,7 +444,7 @@ public class Parser {
   //
   // prefixexp ::= prefix {suffix}
   // prefix ::= Name | '(' exp ')'
-  // suffix ::= '[' exp ']' | '.' Name | ':' Name args | args
+  // suffix ::= '[' exp ']' | '.' Name | args
   // args ::= '(' [explist] ')' | '{' '}' | String
   private Expression parsePrefixExpression() {
     System.out.println("parsePrefixExpression()");
@@ -425,8 +461,18 @@ public class Parser {
       return null;
     }
 
-    Expression expression = null;
-    Name name = null;
+    while (true) {
+      if (consume(TK_DOT)) {
+        Name name = parseName();
+        base = new MemberExpression(base, name);
+      } else if (consume(TK_LEFTBRACKET)) {
+        Expression expression = expect(parseExpression());
+        expect(TK_RIGHTBRACKET);
+        base = new IndexExpression(base, expression);
+      } else {
+        break;
+      }
+    }
     /*
     while (true) {
       if ()
@@ -488,6 +534,18 @@ public class Parser {
     }
   }
 
+  // funcname ::= Name {'.' Name}
+  private Expression parseFunctionName() {
+    System.out.println("parseFunctionName()");
+
+    Expression base = parseName();
+    while (consume(TK_DOT)) {
+      Name name = parseName();
+      base = new MemberExpression(base, name);
+    }
+    return base;
+  }
+
   private boolean isBlockFollow(Token token) {
     return token.equals(TK_INVALID) || token.equals(TK_ELSE) ||
         token.equals(TK_ELSEIF) || token.equals(TK_END) ||
@@ -540,7 +598,6 @@ public class Parser {
     return false;
   }
 
-  // TODO: Incompleted
   private Expression expect(Expression expression) {
     if (expression != null) {
       return expression;
@@ -550,7 +607,6 @@ public class Parser {
     }
   }
 
-  // TODO: Incompleted
   private void expect(Token token) {
     if (currToken.equals(token)) {
       next();

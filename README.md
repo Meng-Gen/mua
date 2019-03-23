@@ -25,7 +25,7 @@
 
     retstat ::= return [exp] [‘;’]
 
-    funcname ::= namelist
+    funcname ::= Name {'.' Name}
 
     var ::= Name | prefixexp ‘[’ exp ‘]’ | prefixexp ‘.’ Name
 
